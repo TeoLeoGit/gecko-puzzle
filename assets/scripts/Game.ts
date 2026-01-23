@@ -66,22 +66,21 @@ export class Game extends Component {
         let remaining = this.moveSpeed * deltaTime;
 
         while (remaining > 0 && this.targetWorldPos) {
-            const current = this.gecko.node.worldPosition.clone();
+            const current = this.gecko.HeadNode.worldPosition.clone();
             const toTarget = this.targetWorldPos.clone().subtract(current);
             const dist = toTarget.length();
 
             if (dist <= remaining) {
                 // reach target this frame
-                this.gecko.node.setWorldPosition(this.targetWorldPos);
+                this.gecko.moveToPos(this.targetWorldPos);
                 remaining -= dist;
-
+                this.pathIndex++;
                 if (this.pathIndex < this.path.length) {
-                    this.gecko.HeadPoint = this.path[this.pathIndex];
+                    this.gecko.updateTrail(this.path[this.pathIndex]);
                 } else {
                     this.activeTarget = null;
                 }
 
-                this.pathIndex++;
                 this.commitPendingTargetIfAny();
                 this.moveToNextCell();
             } else {
@@ -90,7 +89,7 @@ export class Game extends Component {
                 const nextPos = current.add(
                     toTarget.multiplyScalar(remaining)
                 );
-                this.gecko.node.setWorldPosition(nextPos);
+                this.gecko.moveToPos(nextPos);
                 remaining = 0;
             }
         }
