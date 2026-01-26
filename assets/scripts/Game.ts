@@ -1,4 +1,4 @@
-import { _decorator, Camera, Component, EventMouse, EventTouch, log, Node, UITransform, Vec2, Vec3 } from 'cc';
+import { _decorator, Camera, Color, Component, EventMouse, EventTouch, log, Node, Sprite, UITransform, Vec2, Vec3 } from 'cc';
 import { AStar, Point } from './AStar';
 import { Gecko } from './Gecko';
 import { Data } from './Data';
@@ -38,6 +38,16 @@ export class Game extends Component {
         this.node.on(Node.EventType.TOUCH_MOVE, this.onTouchMove, this);
         this.node.on(Node.EventType.TOUCH_END, this.onTouchEnd, this);
         this.node.on(Node.EventType.TOUCH_CANCEL, this.onTouchEnd, this);
+
+        const grid = Data.Grid;
+        for (let i = 0; i < this.rows; i++) 
+            for (let j = 0; j < this.cols; j++) 
+            {
+                if (grid[i][j] === 1) {
+                    this.grid.children[i * this.cols + j].getComponentInChildren(Sprite).enabled = false;
+                    log(j, i)
+                }
+            }
     }
     
     onTouchStart(e: EventTouch) {
@@ -69,17 +79,15 @@ export class Game extends Component {
             const current = this.gecko.HeadNode.worldPosition.clone();
             const toTarget = this.targetWorldPos.clone().subtract(current);
             const dist = toTarget.length();
-
+            
+            this.gecko.lookAt2D(this.targetWorldPos);
             if (dist <= remaining) {
                 // reach target this frame
                 this.gecko.moveToPos(this.targetWorldPos);
+                this.gecko.updateTrail(this.path[this.pathIndex]);
                 remaining -= dist;
                 this.pathIndex++;
-                if (this.pathIndex < this.path.length) {
-                    this.gecko.updateTrail(this.path[this.pathIndex]);
-                } else {
-                    this.activeTarget = null;
-                }
+                if (this.pathIndex >= this.path.length) this.activeTarget = null;
 
                 this.commitPendingTargetIfAny();
                 this.moveToNextCell();
@@ -148,7 +156,11 @@ export class Game extends Component {
         const grid = Data.Grid;
         const astar = new AStar(grid);
         const path = astar.findPath(startPoint, targetPoint);
-        if (path.length === 0) return;
+        if (path.length === 0) {
+            this.targetWorldPos = null;
+            this.activeTarget = null;
+            return;
+        }
         //move this.gecko node follow path
         this.path = path;
         this.pathIndex = 0;
