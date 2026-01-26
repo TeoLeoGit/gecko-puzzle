@@ -85,6 +85,7 @@ export class Game extends Component {
                 // reach target this frame
                 this.gecko.moveToPos(this.targetWorldPos);
                 this.gecko.updateTrail(this.path[this.pathIndex]);
+                this.gecko.bendBody();
                 remaining -= dist;
                 this.pathIndex++;
                 if (this.pathIndex >= this.path.length) this.activeTarget = null;

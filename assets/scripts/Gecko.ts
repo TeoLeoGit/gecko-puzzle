@@ -1,5 +1,6 @@
 import { _decorator, Component, log, Node, Vec3 } from 'cc';
 import { Point } from './AStar';
+import { Data } from './Data';
 const { ccclass, property } = _decorator;
 
 @ccclass('Gecko')
@@ -22,7 +23,6 @@ export class Gecko extends Component {
         {x: 0, y: 3}
     ];
 
-
     get HeadPoint(): Point {
         return this.headPoint;
     }
@@ -37,6 +37,10 @@ export class Gecko extends Component {
 
     set HeadPoint(point: Point) {
         this.headPoint = point;
+    }
+
+    protected onLoad(): void {
+        this.markOccupiedOnTrail();
     }
 
     init(bodyLength: number) {
@@ -80,6 +84,7 @@ export class Gecko extends Component {
 
     updateTrail(newHeadPoint: Point) {
         if (newHeadPoint.x === this.headPoint.x && newHeadPoint.y === this.headPoint.y) return;
+        this.freeRemovedTrailPoint();
         for (let i = this.trail.length - 1; i > 0; i--) {
             this.trail[i].x = this.trail[i - 1].x;
             this.trail[i].y = this.trail[i - 1].y;
@@ -88,7 +93,7 @@ export class Gecko extends Component {
         this.headPoint.y = newHeadPoint.y;
         this.trail[0].x = newHeadPoint.x;
         this.trail[0].y = newHeadPoint.y;
-        this.bendBody();
+        this.markOccupiedOnTrail();
     }
 
     lookAt2D(target: Vec3) {
@@ -104,20 +109,18 @@ export class Gecko extends Component {
         this.headNode.setRotationFromEuler(0, 0, angleDeg);
     }
 
-    lerpAngle(current: number, target: number, t: number): number {
-        let delta = (target - current) % 360;
-        if (delta > 180) delta -= 360;
-        if (delta < -180) delta += 360;
-        return current + delta * t;
-    }
 
     bendBody() {
         for (let i = 1; i < this.parts.length - 1; i++) {
             this.resetBody(i);
             if (this.trail[i + 1].x !== this.trail[i - 1].x && 
-                this.trail[i + 1].y !== this.trail[i - 1].y)
-                this.bendLCurve(this.parts[i].children, this.trail[i - 1], this.trail[i],  this.trail[i + 1]);
+                this.trail[i + 1].y !== this.trail[i - 1].y) {
+                    this.parts[i].angle = 0;
+                    this.bendLCurve(this.parts[i].children, this.trail[i - 1], this.trail[i],  this.trail[i + 1]);
+                }
+            else this.lookAtPrevBody(i);
         }
+        this.lookAtPrevBody(this.parts.length - 1);
     }
 
     bendLCurve(
@@ -134,12 +137,6 @@ export class Gecko extends Component {
         const dx = target.x - from.x;
         const dy = target.y - from.y;
         const dx_fc = from.x - curr.x;
-        const dy_fc = from.y - curr.y;
-
-        dx > 0;
-        dx < 0;
-        dy < 0; // screen space
-        dy > 0;
 
         let cx = 0, cy = 0; //center of the curve
         let startAngle = 0;
@@ -180,7 +177,7 @@ export class Gecko extends Component {
                 cx = -half; cy = -half;
                 startAngle = 90;
                 endAngle = 0;
-                parts[0].parent.name = `3_2_${dy}_${dx}`;
+                parts[0].parent.name = `3_2`;
             }
         } else if (dx < 0 && dy < 0) {  // 2
             if (dx_fc === 0) {
@@ -222,6 +219,24 @@ export class Gecko extends Component {
             j++;
         })
         this.parts[index].name = 'normal';
+    }
+
+    lookAtPrevBody(index: number) {
+        if (this.trail[index].x === this.trail[index - 1].x)
+            this.parts[index].angle = 0;
+        else this.parts[index].angle = 90;
+    }
+
+    markOccupiedOnTrail() {
+        for (let i = 0; i < this.trail.length; i++) {
+            const point = this.trail[i];
+            Data.Grid[point.y][point.x] = 1;
+        }
+    }
+
+    freeRemovedTrailPoint() {
+        const freePoint = this.trail[this.trail.length - 1];
+        Data.Grid[freePoint.y][freePoint.x] = 0;
     }
 }
 
