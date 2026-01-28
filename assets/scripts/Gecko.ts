@@ -30,7 +30,6 @@ export class Gecko extends Component {
     private segments: Node[] = [];
     private segmentTargets: SegmentTarget[] = [];
     private segmentsEachPart: number = 6;
-    private isMove: boolean = false;
 
     get HeadPoint(): Point {
         return this.headPoint;
@@ -73,43 +72,17 @@ export class Gecko extends Component {
     }
 
     protected update(dt: number): void {
-        if (this.isMove) this.moveSegmentsToTargets(800, dt);
+        if (this.segmentTargets.length < this.segments.length) return;
+        const done = this.moveSegmentsToTargets(dt, 1600);
+
+        if (done) {
+            this.consumeTailTargets(6);
+        }
     }
 
-    moveToPos(pos: Vec3, speed: number, deltaTime: number) {
-        const headPos = this.headNode.worldPosition.clone();
-        const delta = pos.clone().subtract(headPos);
-        const dist = delta.length();
-
+    moveToPos(pos: Vec3) {
         // move head
         this.headNode.setWorldPosition(pos);
-
-        // move body segments
-        for (let i = 1; i < this.parts.length; i++) {
-            const part = this.parts[i];
-            const partPos = part.worldPosition;
-
-            const prev = this.trail[i - 1];
-            const curr = this.trail[i];
-
-            let dx = 0;
-            let dy = 0;
-
-            if (prev.x === curr.x) {
-                // vertical
-                dy = prev.y > curr.y ? dist : -dist;
-            } else {
-                // horizontal
-                dx = prev.x > curr.x ? dist : -dist;
-            }
-
-            part.setWorldPosition(
-                partPos.x + dx,
-                partPos.y + dy,
-                partPos.z
-            );
-        }
-        this.isMove = true;
     }
 
     updateTrail(newHeadPoint: Point) {
@@ -118,6 +91,7 @@ export class Gecko extends Component {
         for (let i = this.trail.length - 1; i > 0; i--) {
             this.trail[i].x = this.trail[i - 1].x;
             this.trail[i].y = this.trail[i - 1].y;
+            this.parts[i].position = new Vec3(this.trail[i].x * Data.CellSize, this.trail[i].y * Data.CellSize);
         }
         this.headPoint.x = newHeadPoint.x;
         this.headPoint.y = newHeadPoint.y;
@@ -145,7 +119,6 @@ export class Gecko extends Component {
                 const newTargets = this.bendLCurveTargets(this.trail[0], this.trail[1],
                     this.trail[2], this.segmentsEachPart, this.parts[1]);
                 this.segmentTargets.unshift(...newTargets);
-                this.segmentTargets.splice(-newTargets.length, newTargets.length);
             }
         else {
             const newTargets = [];
@@ -180,31 +153,13 @@ export class Gecko extends Component {
                     );
                     const target: SegmentTarget = {
                         pos: worldPos,
-                        angle: dx > 0 ? 90 : -90
+                        angle: dx > 0 ? 90 : 270
                     }
                     newTargets.push(target);
                 }
             }
             this.segmentTargets.unshift(...newTargets);
-            this.segmentTargets.splice(-newTargets.length, newTargets.length);
         }
-    }
-
-    resetBody(index: number) {
-        let j = 0;
-        const partCount = this.parts[index].children.length;
-        this.parts[index].children.forEach(segment => {
-            segment.setPosition(0, -40 + j * (100 / partCount), 0);
-            segment.angle = 0;
-            j++;
-        })
-        this.parts[index].name = 'normal';
-    }
-
-    lookAtPrevBody(index: number) {
-        if (this.trail[index].x === this.trail[index - 1].x)
-            this.parts[index].angle = 0;
-        else this.parts[index].angle = 90;
     }
 
     markOccupiedOnTrail() {
@@ -362,36 +317,62 @@ export class Gecko extends Component {
 
     moveSegmentsToTargets(
         speed: number,
-        deltaTime: number
-    ) {
+        deltaTime: number,
+    ): boolean {
+
+        let allReached = true;
+
         for (let i = 0; i < this.segments.length; i++) {
-            const segment = this.segments[i];
-            const target = this.segmentTargets[i];
-    
-            // ---- position ----
-            const currentPos = segment.worldPosition.clone();
-            const toTarget = target.pos.clone().subtract(currentPos);
-            const dist = toTarget.length();
-    
-            if (dist > 0.01) {
-                const step = Math.min(speed * deltaTime, dist);
-                toTarget.normalize().multiplyScalar(step);
-                segment.setWorldPosition(currentPos.add(toTarget));
+            const seg = this.segments[i];
+            const tgt = this.segmentTargets[i];
+
+            // ----- position -----
+            const curPos = seg.worldPosition.clone();
+            const dist = Vec3.distance(curPos, tgt.pos);
+
+            if (dist > 0.001) {
+                const t = Math.min(1, speed * deltaTime / dist);
+                Vec3.lerp(curPos, curPos, tgt.pos, t);
+                seg.setWorldPosition(curPos);
+
+                // ----- rotation (same t) -----
+                const curAngle = this.normalizeAngle(seg.eulerAngles.z);
+                const targetAngle = this.normalizeAngle(tgt.angle);
+
+                const nextAngle = this.lerpAngle(curAngle, targetAngle, t);
+                seg.setRotationFromEuler(0, 0, nextAngle);
+
+                allReached = false;
+            } else {
+                // snap if close
+                seg.setWorldPosition(tgt.pos);
+                seg.setRotationFromEuler(0, 0, tgt.angle);
             }
-    
-            // ---- rotation ----
-            const currentAngle = segment.eulerAngles.z;
-            const newAngle = this.lerpAngle(currentAngle, target.angle, 0.25);
-            segment.setRotationFromEuler(0, 0, newAngle);
-            // segment.worldPosition = target.pos;
-            // segment.angle = target.angle;
         }
+
+        return allReached;
+    }
+
+    consumeTailTargets(H: number) {
+        this.segmentTargets.splice(
+            this.segmentTargets.length - H,
+            H
+        );
+    }
+
+    deltaAngle(a: number, b: number): number {
+        let d = ((b - a + 180) % 360) - 180;
+        if (d < -180) d += 360;
+        return d;
     }
 
     lerpAngle(a: number, b: number, t: number): number {
+        a = this.normalizeAngle(a);
+        b = this.normalizeAngle(b);
+    
         let delta = ((b - a + 180) % 360) - 180;
-        return a + delta * t;
+        if (delta < -180) delta += 360;
+    
+        return this.normalizeAngle(a + delta * t);
     }
 }
-
-

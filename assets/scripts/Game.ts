@@ -40,14 +40,14 @@ export class Game extends Component {
         this.node.on(Node.EventType.TOUCH_CANCEL, this.onTouchEnd, this);
 
         const grid = Data.Grid;
-        for (let i = 0; i < this.rows; i++) 
+        for (let i = 0; i < this.rows; i++) {
             for (let j = 0; j < this.cols; j++) 
             {
                 if (grid[i][j] === 1) {
                     this.grid.children[i * this.cols + j].getComponentInChildren(Sprite).enabled = false;
-                    log(j, i)
                 }
             }
+        }
     }
     
     onTouchStart(e: EventTouch) {
@@ -85,7 +85,7 @@ export class Game extends Component {
                 // reach target this frame
                 this.gecko.updateTrail(this.path[this.pathIndex]);
                 this.gecko.updateSegmentTargets();
-                this.gecko.moveToPos(this.targetWorldPos, this.moveSpeed, deltaTime);
+                this.gecko.moveToPos(this.targetWorldPos);
                 remaining -= dist;
                 this.pathIndex++;
                 if (this.pathIndex >= this.path.length) this.activeTarget = null;
@@ -98,7 +98,7 @@ export class Game extends Component {
                 const nextPos = current.add(
                     toTarget.multiplyScalar(remaining)
                 );
-                this.gecko.moveToPos(nextPos, this.moveSpeed, deltaTime);
+                this.gecko.moveToPos(nextPos);
                 remaining = 0;
             }
         }
