@@ -146,26 +146,17 @@ export class Gecko extends Component {
                     this.trail[2], this.segmentsEachPart, this.parts[1]);
                 this.segmentTargets.unshift(...newTargets);
                 this.segmentTargets.splice(-newTargets.length, newTargets.length);
-                for (let i = 0; i < newTargets.length; i++) {
-                    const labelNode = new Node("curtain");
-                    const label = labelNode.addComponent(Label);
-                    label.string = `${i}`;
-                    label.fontSize = 15;
-                    labelNode.parent = this.node.parent;
-                    labelNode.setWorldPosition(newTargets[i].pos);
-                    //labelNode.angle = newTargets[i].angle;
-                }
             }
         else {
             const newTargets = [];
             if (this.trail[2].x === this.trail[0].x) {
-                const dy = this.trail[1].y - this.trail[0].y;
+                const dy = this.trail[0].y - this.trail[1].y;
                 for (let i = 0; i < this.segmentsEachPart; i++) {
                     const worldPos = new Vec3();
                     this.parts[1].getComponent(UITransform)!.convertToWorldSpaceAR(
                         new Vec3(
                             0,
-                            (-54 + i * 20) * dy,
+                            dy > 0 ? (54 - i * 20) : (-54 + i * 20),
                         ),
                         worldPos
                     );
@@ -181,7 +172,7 @@ export class Gecko extends Component {
                     const worldPos = new Vec3();
                     this.parts[1].getComponent(UITransform)!.convertToWorldSpaceAR(
                         new Vec3(
-                            (54 - i * 20) * dx,
+                            dx > 0 ? (54 - i * 20) : (-54 + i * 20),
                             0,
                             0
                         ),
@@ -196,15 +187,6 @@ export class Gecko extends Component {
             }
             this.segmentTargets.unshift(...newTargets);
             this.segmentTargets.splice(-newTargets.length, newTargets.length);
-            for (let i = 0; i < newTargets.length; i++) {
-                const labelNode = new Node("curtain");
-                const label = labelNode.addComponent(Label);
-                label.string = `${i}`;
-                label.fontSize = 15;
-                labelNode.parent = this.node.parent;
-                labelNode.setWorldPosition(newTargets[i].pos);
-                //labelNode.angle = newTargets[i].angle;
-            }
         }
     }
 
@@ -288,6 +270,7 @@ export class Gecko extends Component {
                 cx = half; cy = half;
                 startAngle = 270;
                 delta90 = -90;
+                visualFlip = true;
                 this.segments[0].parent.name = '1_2_ok';
             }
         } else if (dx > 0 && dy < 0) {   // 3
@@ -295,7 +278,6 @@ export class Gecko extends Component {
                 cx = half; cy = half;
                 startAngle = 180;
                 delta90 = 90;
-                visualFlip = true;
                 this.segments[0].parent.name = '3_1_ok';
             } else {
                 cx = -half; cy = -half;
@@ -309,8 +291,8 @@ export class Gecko extends Component {
                 cx = -half; cy = half;
                 startAngle = 0;
                 delta90 = -90;
-                this.segments[0].parent.name = '2_1_ok';
                 visualFlip = true;
+                this.segments[0].parent.name = '2_1_ok';
 
             } else {
                 cx = half; cy = -half;
@@ -384,7 +366,7 @@ export class Gecko extends Component {
     ) {
         for (let i = 0; i < this.segments.length; i++) {
             const segment = this.segments[i];
-            const target = this.segmentTargets[this.segments.length - 1 - i];
+            const target = this.segmentTargets[i];
     
             // ---- position ----
             const currentPos = segment.worldPosition.clone();
@@ -401,6 +383,8 @@ export class Gecko extends Component {
             const currentAngle = segment.eulerAngles.z;
             const newAngle = this.lerpAngle(currentAngle, target.angle, 0.25);
             segment.setRotationFromEuler(0, 0, newAngle);
+            // segment.worldPosition = target.pos;
+            // segment.angle = target.angle;
         }
     }
 
