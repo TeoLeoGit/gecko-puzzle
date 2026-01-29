@@ -82,7 +82,8 @@ export class Game extends Component {
             this.gecko.lookAt2D(this.targetWorldPos);
             if (dist <= remaining) {
                 // reach target this frame
-                this.gecko.moveToPos(this.targetWorldPos);
+                this.gecko.moveHead(this.targetWorldPos);
+                this.gecko.moveTail(Data.MoveSpeed, deltaTime);
                 remaining -= dist;
                 this.pathIndex++;
                 if (this.pathIndex >= this.path.length) this.activeTarget = null;
@@ -95,7 +96,8 @@ export class Game extends Component {
                 const nextPos = current.add(
                     toTarget.multiplyScalar(remaining)
                 );
-                this.gecko.moveToPos(nextPos);
+                this.gecko.moveHead(nextPos);
+                this.gecko.moveTail(Data.MoveSpeed, deltaTime);
                 remaining = 0;
             }
         }

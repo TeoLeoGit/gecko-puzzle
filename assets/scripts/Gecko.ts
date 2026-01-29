@@ -54,7 +54,7 @@ export class Gecko extends Component {
         for (let i = 1; i < this.parts.length - 1; i++) {
             this.parts[i].children.forEach(segment => {
                 this.segments.push(segment);
-            })
+            });
         }
         this.segments.forEach(segment => {
             segment.setParent(nodeSegments, true);
@@ -67,7 +67,7 @@ export class Gecko extends Component {
             this.segmentTargets.push({
                 pos: segment.worldPosition,
                 angle: segment.angle
-            })
+            });
         })
     }
 
@@ -80,8 +80,31 @@ export class Gecko extends Component {
         }
     }
 
-    moveToPos(pos: Vec3) {
-        // move head
+    moveTail(speed: number, dt: number) {
+        const n = this.parts.length;
+        const curPos = this.tailNode.position.clone();
+        const tgtPos = new Vec3(this.trail[n - 1].x * Data.CellSize, this.trail[n - 1].y * Data.CellSize);
+
+        const dist = Vec3.distance(curPos, tgtPos);
+
+        if (dist > 0.001) {
+            const t = Math.min(1, speed * dt / dist);
+            Vec3.lerp(curPos, curPos, tgtPos, t);
+            this.tailNode.setPosition(curPos);
+
+            // ----- rotation (same t) -----
+            const curAngle = this.normalizeAngle(this.tailNode.eulerAngles.z);
+            const targetAngle = this.normalizeAngle(this.segments[this.segments.length - 1].angle);
+
+            const nextAngle = this.lerpAngle(curAngle, targetAngle, t);
+            this.tailNode.setRotationFromEuler(0, 0, nextAngle);
+        } else {
+            // snap if close
+            this.tailNode.setPosition(tgtPos);
+        }
+    }
+
+    moveHead(pos: Vec3) {
         this.headNode.setWorldPosition(pos);
     }
 
@@ -92,7 +115,8 @@ export class Gecko extends Component {
         for (let i = this.trail.length - 1; i > 0; i--) {
             this.trail[i].x = this.trail[i - 1].x;
             this.trail[i].y = this.trail[i - 1].y;
-            this.parts[i].position = new Vec3(this.trail[i].x * Data.CellSize, this.trail[i].y * Data.CellSize);
+            if (i < this.trail.length - 1)
+                this.parts[i].position = new Vec3(this.trail[i].x * Data.CellSize, this.trail[i].y * Data.CellSize);
         }
         this.headPoint.x = newHeadPoint.x;
         this.headPoint.y = newHeadPoint.y;
@@ -167,14 +191,6 @@ export class Gecko extends Component {
         for (let i = 0; i < this.trail.length; i++) {
             const point = this.trail[i];
             Data.Grid[point.y][point.x] = 1;
-        }
-    }
-
-    testBendLCurve() {
-        const newTargets = this.bendLCurveTargets({x: 0, y: 0}, {x: 1, y: 0}, {x: 1, y: 1}, 6, this.parts[0]);
-        for (let i = 0; i < newTargets.length; i++) {
-            this.segments[i].worldPosition = newTargets[i].pos;
-            this.segments[i].angle = newTargets[i].angle;
         }
     }
 
@@ -286,21 +302,6 @@ export class Gecko extends Component {
         return a < 0 ? a + 360 : a;
     }
 
-    remapVisualAngle(angle: number): number {
-        angle = ((angle % 360) + 360) % 360;
-    
-        if (angle <= 90) {
-            return angle;
-        }
-        if (angle <= 180) {
-            return 180 - angle;
-        }
-        if (angle <= 270) {
-            return angle - 180;
-        }
-        return 360 - angle;
-    }
-
     moveSegmentsToTargets(
         speed: number,
         deltaTime: number,
@@ -344,12 +345,6 @@ export class Gecko extends Component {
             this.segmentTargets.length - H,
             H
         );
-    }
-
-    deltaAngle(a: number, b: number): number {
-        let d = ((b - a + 180) % 360) - 180;
-        if (d < -180) d += 360;
-        return d;
     }
 
     lerpAngle(a: number, b: number, t: number): number {
