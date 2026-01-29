@@ -30,7 +30,6 @@ export class Game extends Component {
     //Move geckos
     private path: Point[] = [];
     private pathIndex = 0;
-    private moveSpeed = 800; // units per second
     private targetWorldPos: Vec3 | null = null;
 
     onLoad() {
@@ -73,7 +72,7 @@ export class Game extends Component {
     update(deltaTime: number) {
         if (!this.targetWorldPos) return;
 
-        let remaining = this.moveSpeed * deltaTime;
+        let remaining = Data.MoveSpeed * deltaTime;
 
         while (remaining > 0 && this.targetWorldPos) {
             const current = this.gecko.HeadNode.worldPosition.clone();
@@ -83,8 +82,6 @@ export class Game extends Component {
             this.gecko.lookAt2D(this.targetWorldPos);
             if (dist <= remaining) {
                 // reach target this frame
-                this.gecko.updateTrail(this.path[this.pathIndex]);
-                this.gecko.updateSegmentTargets();
                 this.gecko.moveToPos(this.targetWorldPos);
                 remaining -= dist;
                 this.pathIndex++;
@@ -130,8 +127,10 @@ export class Game extends Component {
     moveToCellAtTouchPos(event: EventTouch) {
         const worldPos = this.screenToWorld(new Vec3(event.getLocation().x, event.getLocation().y, 0));
         const targetPoint = this.findCellAt(worldPos);
-
+        
         if (targetPoint) {
+            if (Data.Grid[targetPoint.y][targetPoint.x] === 1) return; //Wall
+            if (this.gecko.HeadPoint.x === targetPoint.x && this.gecko.HeadPoint.y === targetPoint.y) return;
             if (!this.activeTarget) {
                 this.activeTarget = targetPoint;
                 this.moveGeckoOnPath(this.gecko.HeadPoint, targetPoint);
@@ -178,6 +177,8 @@ export class Game extends Component {
     
         const p = this.path[this.pathIndex];
         this.targetWorldPos = this.gridToWorld(p);
+        this.gecko.updateTrail(this.path[this.pathIndex]);
+        this.gecko.updateSegmentTargets();
     }
 
     private gridToWorld(p: Point): Vec3 {

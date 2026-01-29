@@ -73,7 +73,7 @@ export class Gecko extends Component {
 
     protected update(dt: number): void {
         if (this.segmentTargets.length < this.segments.length) return;
-        const done = this.moveSegmentsToTargets(dt, 1600);
+        const done = this.moveSegmentsToTargets(Data.MoveSpeed, dt);
 
         if (done) {
             this.consumeTailTargets(6);
@@ -87,7 +87,8 @@ export class Gecko extends Component {
 
     updateTrail(newHeadPoint: Point) {
         if (newHeadPoint.x === this.headPoint.x && newHeadPoint.y === this.headPoint.y) return;
-        this.freeRemovedTrailPoint();
+        const freePoint = this.trail[this.trail.length - 1];
+        Data.Grid[freePoint.y][freePoint.x] = 0;
         for (let i = this.trail.length - 1; i > 0; i--) {
             this.trail[i].x = this.trail[i - 1].x;
             this.trail[i].y = this.trail[i - 1].y;
@@ -169,11 +170,6 @@ export class Gecko extends Component {
         }
     }
 
-    freeRemovedTrailPoint() {
-        const freePoint = this.trail[this.trail.length - 1];
-        Data.Grid[freePoint.y][freePoint.x] = 0;
-    }
-
     testBendLCurve() {
         const newTargets = this.bendLCurveTargets({x: 0, y: 0}, {x: 1, y: 0}, {x: 1, y: 1}, 6, this.parts[0]);
         for (let i = 0; i < newTargets.length; i++) {
@@ -208,38 +204,32 @@ export class Gecko extends Component {
                 startAngle = 180;
                 delta90 = -90;
                 visualFlip = true;
-                this.segments[0].parent.name = '4_1_ok';
             } else {
                 cx = -half; cy = half;
                 startAngle = 270;
                 delta90 = 90;
-                this.segments[0].parent.name = '4_2_ok';
             }
         } else if (dx < 0 && dy > 0) {   // 1
             if (dx_fc === 0) {
                 cx = -half; cy = -half;
                 startAngle = 0;
-                this.segments[0].parent.name = '1_1_ok';
                 delta90 = 90;
             } else {
                 cx = half; cy = half;
                 startAngle = 270;
                 delta90 = -90;
                 visualFlip = true;
-                this.segments[0].parent.name = '1_2_ok';
             }
         } else if (dx > 0 && dy < 0) {   // 3
             if (dx_fc === 0) {
                 cx = half; cy = half;
                 startAngle = 180;
                 delta90 = 90;
-                this.segments[0].parent.name = '3_1_ok';
             } else {
                 cx = -half; cy = -half;
                 startAngle = 90;
                 delta90 = -90;
                 visualFlip = true;
-                this.segments[0].parent.name = '3_2_ok';
             }
         } else if (dx < 0 && dy < 0) {   // 2
             if (dx_fc === 0) {
@@ -247,13 +237,10 @@ export class Gecko extends Component {
                 startAngle = 0;
                 delta90 = -90;
                 visualFlip = true;
-                this.segments[0].parent.name = '2_1_ok';
-
             } else {
                 cx = half; cy = -half;
                 startAngle = 90;
                 delta90 = 90;
-                this.segments[0].parent.name = '2_2_ok';
             }
         } else {
             return targets;
@@ -261,7 +248,6 @@ export class Gecko extends Component {
 
         startAngle = this.normalizeAngle(startAngle);
         
-        // 🔑 FIX: force delta to exactly ±90
         for (let i = 0; i < N; i++) {
             const t = i / (N - 1);
 

@@ -11,6 +11,7 @@ export class Data {
         [0, 0, 0, 0, 0, 0, 0],
     ];
     static CellSize = 100;
+    static MoveSpeed = 800;
 }
 
 
