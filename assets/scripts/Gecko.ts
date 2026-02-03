@@ -2,6 +2,7 @@ import { _decorator, Component, log, Node, UITransform, Vec3 } from 'cc';
 import { Point } from './AStar';
 import { Data } from './Data';
 import { Utils } from './Utils';
+import { Config } from './Config';
 const { ccclass, property } = _decorator;
 
 interface SegmentTarget {
@@ -30,29 +31,16 @@ export class Gecko extends Component {
         {x: 0, y: 2},
         {x: 0, y: 3}
     ];
+    private backwardPoint1: Point = null;
+    private baclwardPoint2: Point = null;
     private segments: Node[] = [];
     private moveNode: Node = null;
     private endNode:  Node = null;
-    private segmentTargets: SegmentTarget[] = [];
+    private segmentTargets : SegmentTarget[] = [];
     private isMovingHead: boolean = true;
     private isMoving    : boolean = false;
+    private isBackwards : boolean = false;
     private segmentsEachPart: number = 6;
-
-    get HeadPoint(): Point {
-        return this.headPoint;
-    }
-
-    get TailPoint(): Point {
-        return this.tailPoint;
-    }
-
-    get HeadNode(): Node {
-        return this.headNode;
-    }
-
-    set HeadPoint(point: Point) {
-        this.headPoint = point;
-    }
 
     get MovePoint(): Point {
         return this.movePoint;
@@ -60,6 +48,14 @@ export class Gecko extends Component {
 
     get MoveNode(): Node {
         return this.moveNode;
+    }
+
+    get IsBackwards(): boolean {
+        return this.isBackwards;
+    }
+
+    get IsMoving(): boolean {
+        return this.isMoving;
     }
 
     protected onLoad(): void {
@@ -97,6 +93,91 @@ export class Gecko extends Component {
         }
     }
 
+    moveTo(pos: Vec3, speed: number, dt: number) {
+        this.isMoving = true;
+        this.moveNode.setWorldPosition(pos);
+        this.moveEndNode(speed, dt);    
+    }
+
+    isTouchGecko(point: Point): boolean {
+        if (point) {
+            for (let i = 0; i < this.trail.length; i++) {
+                if (point.x === this.trail[i].x && point.y === this.trail[i].y) return true;
+            }
+        }
+        return false;
+    }
+ 
+    isBackwardsDirection(dragPoint: Point): boolean {
+        if (dragPoint) {
+            for (let i = 1; i < this.trail.length - 1; i++) {
+                if (dragPoint.x === this.trail[i].x && dragPoint.y === this.trail[i].y) return true;
+            }
+        }
+        return false;
+    }
+
+    setBackwardsMovement(isBackward: boolean) {
+        this.isBackwards = isBackward;
+        const n = this.trail.length - 1;
+        this.backwardPoint1 = this.trail[n];
+        this.baclwardPoint2 = this.trail[n - 1];
+    }
+
+    getBackwardsPoint(): Point {
+        if (this.isMoving) return null;
+
+        const { x, y } = this.backwardPoint1;
+        const dx = this.backwardPoint1.x - this.baclwardPoint2.x;
+        const dy = this.backwardPoint1.y - this.baclwardPoint2.y;
+
+        const isFree = (nx: number, ny: number) =>
+            nx >= 0 && nx < Config.Cols &&
+            ny >= 0 && ny < Config.Rows &&
+            Data.Grid[ny][nx] !== 1;
+
+        // movement priority lists
+        let candidates: Point[] = [];
+
+        if (dx !== 0) {
+            // horizontal movement → prefer left/right, then up/down
+            candidates = dx > 0
+                ? [
+                    { x: x + 1, y }, // right
+                    { x: x - 1, y }, // left
+                    { x, y: y + 1 }, // up
+                    { x, y: y - 1 }, // down
+                ]
+                : [
+                    { x: x - 1, y }, // left
+                    { x: x + 1, y }, // right
+                    { x, y: y + 1 }, // up
+                    { x, y: y - 1 }, // down
+                ];
+        } else {
+            // vertical movement → prefer up/down, then left/right
+            candidates = dy > 0
+                ? [
+                    { x, y: y + 1 }, // up
+                    { x, y: y - 1 }, // down
+                    { x: x + 1, y }, // right
+                    { x: x - 1, y }, // left
+                ]
+                : [
+                    { x, y: y - 1 }, // down
+                    { x, y: y + 1 }, // up
+                    { x: x + 1, y }, // right
+                    { x: x - 1, y }, // left
+                ];
+        }
+
+        for (const p of candidates) {
+            if (isFree(p.x, p.y)) return p;
+        }
+
+        return null;
+    }
+
     private moveEndNode(speed: number, dt: number) {
         const n = this.parts.length;
         const curPos = this.endNode.position.clone();
@@ -119,12 +200,6 @@ export class Gecko extends Component {
             // snap if close
             this.endNode.setPosition(tgtPos);
         }
-    }
-
-    moveTo(pos: Vec3, speed: number, dt: number) {
-        this.isMoving = true;
-        this.moveNode.setWorldPosition(pos);
-        this.moveEndNode(speed, dt);
     }
 
     updateTrail(targetPoint: Point) {
@@ -160,8 +235,6 @@ export class Gecko extends Component {
     
         this.moveNode.setRotationFromEuler(0, 0, angleDeg);
     }
-
-    
 
     updateSegmentTargets() {
         if (this.trail[2].x !== this.trail[0].x && 
@@ -212,14 +285,14 @@ export class Gecko extends Component {
         }
     }
 
-    markOccupiedOnTrail() {
+    private markOccupiedOnTrail() {
         for (let i = 0; i < this.trail.length; i++) {
             const point = this.trail[i];
             Data.Grid[point.y][point.x] = 1;
         }
     }
 
-    bendLCurveTargets(
+    private bendLCurveTargets(
         from: Point,
         curr: Point,
         target: Point,
@@ -324,7 +397,7 @@ export class Gecko extends Component {
         return targets;
     }
 
-    moveSegmentsToTargets(
+    private moveSegmentsToTargets(
         speed: number,
         deltaTime: number,
     ): boolean {
@@ -362,7 +435,7 @@ export class Gecko extends Component {
         return allReached;
     }
 
-    consumeTailTargets(H: number) {
+    private consumeTailTargets(H: number) {
         this.segmentTargets.splice(
             this.segmentTargets.length - H,
             H

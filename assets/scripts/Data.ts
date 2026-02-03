@@ -1,5 +1,3 @@
-import { Node } from "cc";
-
 export class Data {
     static Grid: number[][] = [
         [0, 0, 0, 0, 0, 0, 0],

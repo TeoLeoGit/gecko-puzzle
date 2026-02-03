@@ -29,7 +29,7 @@ export class Game extends Component {
     private pendingTarget: Point | null = null;
     private path: Point[] = [];
     private pathIndex = 0;
-    private targetWorldPos: Vec3 | null = null;
+    private targetWorldPos:   Vec3 | null = null;
     private previewDist: number = 80;
 
     private previewBaseAngle = 0;
@@ -54,11 +54,13 @@ export class Game extends Component {
     
     onTouchStart(e: EventTouch) {
         this.dragStart = e.getUILocation();
-        this.choseMoveNode(e);
-        this.moveToCellAtTouchPos(e);
+        const targetPoint = this.getPointAtTouchPos(e);
+        this.choseMoveNode(targetPoint);
+        this.moveGeckoToPoint(targetPoint);
     }
     
     onTouchMove(e: EventTouch) {
+        if (this.gecko.IsMoving) return;
         const current = e.getUILocation();
         this.dragDir = current.subtract(this.dragStart);
 
@@ -68,8 +70,27 @@ export class Game extends Component {
             this.dragDir.normalize().multiplyScalar(maxLength);
         }
 
-        // const worldPos =  this.screenToWorld(new Vec3(e.getLocation().x, e.getLocation().y));
-        // worldPos.z = 0;
+        const targetPoint = this.getPointAtTouchPos(e);
+        const worldPos =  this.screenToWorld(new Vec3(e.getLocation().x, e.getLocation().y));
+        worldPos.z = 0;
+
+        //Backwards movement
+        if (this.gecko.isTouchGecko(targetPoint)) {
+            if (this.gecko.IsBackwards || this.gecko.isBackwardsDirection(targetPoint)) {
+                if (!this.gecko.IsBackwards) this.gecko.setBackwardsMovement(true);
+                const backwardPoint = this.gecko.getBackwardsPoint();
+                if (backwardPoint) {
+                    this.choseMoveNode(backwardPoint);
+                    this.moveGeckoToPoint(backwardPoint);
+                }
+            }
+        } else {
+            if (this.gecko.IsBackwards) {
+                this.gecko.setBackwardsMovement(false);
+                this.choseMoveNode(targetPoint);
+            }
+        }
+
         // const base = this.grid.children[this.gecko.HeadPoint.y * this.cols + this.gecko.HeadPoint.x];
         // const offset = worldPos.clone().subtract(base.worldPosition);
         // const distFromHead = offset.length();
@@ -77,17 +98,22 @@ export class Game extends Component {
         // if(distFromHead < this.previewDist) {
         //     this.previewMove(base.worldPosition, offset);
         // } else {
-            this.moveToCellAtTouchPos(e);
+        this.moveGeckoToPoint(targetPoint);
         //}
     }
     
     onTouchEnd() {
         this.dragDir.set(0, 0);
+        this.gecko.setBackwardsMovement(false);
     }
 
     update(deltaTime: number) {
         if (!this.targetWorldPos) return;
 
+        this.updateDragGecko(deltaTime);
+    }
+
+    private updateDragGecko(deltaTime: number) {
         let remaining = Data.MoveSpeed * deltaTime;
 
         while (remaining > 0 && this.targetWorldPos) {
@@ -140,17 +166,16 @@ export class Game extends Component {
         return point;
     }
 
-    private choseMoveNode(event: EventTouch) {
-        const worldPos = this.screenToWorld(new Vec3(event.getLocation().x, event.getLocation().y, 0));
-        const targetPoint = this.findCellAt(worldPos);
-        
-        if (targetPoint) this.gecko.determineMovementDirection(targetPoint);
+    private choseMoveNode(point: Point) {
+        if (point) this.gecko.determineMovementDirection(point);
     }
 
-    private moveToCellAtTouchPos(event: EventTouch) {
+    private getPointAtTouchPos(event: EventTouch): Point {
         const worldPos = this.screenToWorld(new Vec3(event.getLocation().x, event.getLocation().y, 0));
-        const targetPoint = this.findCellAt(worldPos);
-        
+        return this.findCellAt(worldPos);
+    }
+
+    private moveGeckoToPoint(targetPoint: Point) {
         if (targetPoint) {
             if (Data.Grid[targetPoint.y][targetPoint.x] === 1) return; //Wall
             if (this.gecko.MovePoint.x === targetPoint.x && this.gecko.MovePoint.y === targetPoint.y) return;
