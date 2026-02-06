@@ -1,4 +1,4 @@
-import { _decorator, Component, log, Node, UITransform, Vec3 } from 'cc';
+import { _decorator, Component, log, Node, Skeleton, sp, UITransform, Vec3 } from 'cc';
 import { Point } from './AStar';
 import { Data } from './Data';
 import { Utils } from './Utils';
@@ -21,6 +21,9 @@ export class Gecko extends Component {
     @property(Node)
     tailNode: Node = null!;
 
+    @property(Node)
+    legsNode: Node = null!;
+
     private headPoint: Point = { x: 0, y: 0 };
     private tailPoint: Point = { x: 0, y: 3 };
     private movePoint: Point = null;
@@ -33,14 +36,16 @@ export class Gecko extends Component {
     ];
     private backwardPoint1: Point = null;
     private baclwardPoint2: Point = null;
-    private segments: Node[] = [];
-    private moveNode: Node = null;
-    private endNode:  Node = null;
+    private legSegments: Node[] = [];
+    private segments:    Node[] = [];
+    private moveNode:    Node = null;
+    private endNode:     Node = null;
     private segmentTargets : SegmentTarget[] = [];
     private isMovingHead: boolean = true;
     private isMoving    : boolean = false;
     private isBackwards : boolean = false;
     private segmentsEachPart: number = 6;
+    private legSkeletons: sp.Skeleton[] = [];
 
     get MovePoint(): Point {
         return this.movePoint;
@@ -60,7 +65,7 @@ export class Gecko extends Component {
 
     protected onLoad(): void {
         this.markOccupiedOnTrail();
-        const nodeSegments = new Node('segments');
+        const nodeSegments = this.node.getChildByName('segments');
         nodeSegments.setParent(this.node);
         for (let i = 1; i < this.parts.length - 1; i++) {
             this.parts[i].children.forEach(segment => {
@@ -69,6 +74,15 @@ export class Gecko extends Component {
         }
         this.segments.forEach(segment => {
             segment.setParent(nodeSegments, true);
+            const leg = segment.getChildByName('leg');
+            if (leg) {
+                this.legSegments.push(segment);
+                const legComp = leg.getComponent(sp.Skeleton)
+                this.legSkeletons.push(legComp);
+                leg.parent = this.legsNode;
+                leg.position = segment.position;
+                legComp.paused = true;
+            }
         });
         this.initSegmentTargets();
     }
@@ -90,7 +104,8 @@ export class Gecko extends Component {
         if (done && remaining > 0) {
             this.isMoving = false;
             this.consumeTailTargets(6);
-        }
+        } 
+        this.animateLegs();
     }
 
     moveTo(pos: Vec3, speed: number, dt: number) {
@@ -192,7 +207,8 @@ export class Gecko extends Component {
 
             // ----- rotation (same t) -----
             const curAngle = Utils.normalizeAngle(this.endNode.eulerAngles.z);
-            const targetAngle = Utils.normalizeAngle(this.segments[this.segments.length - 1].angle);
+            let delta = this.endNode === this.tailNode ? 0 : 180;
+            const targetAngle = Utils.normalizeAngle(this.segments[this.segments.length - 1].angle + delta);
 
             const nextAngle = Utils.lerpAngle(curAngle, targetAngle, t);
             this.endNode.setRotationFromEuler(0, 0, nextAngle);
@@ -232,8 +248,17 @@ export class Gecko extends Component {
     
         const angleRad = Math.atan2(dy, dx);
         const angleDeg = angleRad * 180 / Math.PI + 90;
+        let delta = this.endNode === this.tailNode ? 0 : 180;
     
-        this.moveNode.setRotationFromEuler(0, 0, angleDeg);
+        this.moveNode.setRotationFromEuler(0, 0, angleDeg + delta);
+    }
+
+    animateLegs() {
+        for (let i = 0; i < this.legSkeletons.length; i++) {
+            this.legSkeletons[i].paused = !this.isMoving;
+            this.legSkeletons[i].node.position = this.legSegments[i].position;
+            this.legSkeletons[i].node.angle = this.legSegments[i].angle;
+        }
     }
 
     updateSegmentTargets() {

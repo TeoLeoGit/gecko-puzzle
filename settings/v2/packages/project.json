@@ -1,3 +1,42 @@
 {
-  "__version__": "1.0.6"
+  "__version__": "1.0.6",
+  "sorting-layer": {
+    "layers": [
+      {
+        "id": 0,
+        "name": "default",
+        "value": 0
+      },
+      {
+        "id": 4,
+        "name": "UI_2D",
+        "value": 1
+      },
+      {
+        "id": 2,
+        "name": "LEG_LAYER",
+        "value": 2
+      },
+      {
+        "id": 3,
+        "name": "GROUND_LAYER",
+        "value": 3
+      }
+    ],
+    "increaseId": 38
+  },
+  "layer": [
+    {
+      "name": "BODY_LAYER",
+      "value": 524288
+    },
+    {
+      "name": "LEG_LAYER",
+      "value": 262144
+    },
+    {
+      "name": "GROUND_LAYER",
+      "value": 131072
+    }
+  ]
 }

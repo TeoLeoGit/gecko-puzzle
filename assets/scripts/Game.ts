@@ -17,19 +17,19 @@ export class Game extends Component {
 
     private dragStart = new Vec2();
     private dragDir = new Vec2();
-    
+
     //Grid management
     cellSize = 100;
     rows = 7;
     cols = 7;
     origin = new Vec3(-this.cellSize / 2, -this.cellSize / 2, 0); // bottom-left of grid
-    
+
     //Move geckos
     private activeTarget: Point | null = null;
     private pendingTarget: Point | null = null;
     private path: Point[] = [];
     private pathIndex = 0;
-    private targetWorldPos:   Vec3 | null = null;
+    private targetWorldPos: Vec3 | null = null;
     private previewDist: number = 80;
 
     private previewBaseAngle = 0;
@@ -43,35 +43,34 @@ export class Game extends Component {
 
         const grid = Data.Grid;
         for (let i = 0; i < this.rows; i++) {
-            for (let j = 0; j < this.cols; j++) 
-            {
+            for (let j = 0; j < this.cols; j++) {
                 if (grid[i][j] === 1) {
                     this.grid.children[i * this.cols + j].getComponentInChildren(Sprite).enabled = false;
                 }
             }
         }
     }
-    
+
     onTouchStart(e: EventTouch) {
         this.dragStart = e.getUILocation();
         const targetPoint = this.getPointAtTouchPos(e);
         this.choseMoveNode(targetPoint);
         this.moveGeckoToPoint(targetPoint);
     }
-    
+
     onTouchMove(e: EventTouch) {
         if (this.gecko.IsMoving) return;
         const current = e.getUILocation();
         this.dragDir = current.subtract(this.dragStart);
 
         const maxLength = 100;
-        
+
         if (this.dragDir.length() > maxLength) {
             this.dragDir.normalize().multiplyScalar(maxLength);
         }
 
         const targetPoint = this.getPointAtTouchPos(e);
-        const worldPos =  this.screenToWorld(new Vec3(e.getLocation().x, e.getLocation().y));
+        const worldPos = this.screenToWorld(new Vec3(e.getLocation().x, e.getLocation().y));
         worldPos.z = 0;
 
         //Backwards movement
@@ -82,6 +81,7 @@ export class Game extends Component {
                 if (backwardPoint) {
                     this.choseMoveNode(backwardPoint);
                     this.moveGeckoToPoint(backwardPoint);
+                    return;
                 }
             }
         } else {
@@ -101,7 +101,7 @@ export class Game extends Component {
         this.moveGeckoToPoint(targetPoint);
         //}
     }
-    
+
     onTouchEnd() {
         this.dragDir.set(0, 0);
         this.gecko.setBackwardsMovement(false);
@@ -120,7 +120,7 @@ export class Game extends Component {
             const current = this.gecko.MoveNode.worldPosition.clone();
             const toTarget = this.targetWorldPos.clone().subtract(current);
             const dist = toTarget.length();
-            
+
             this.gecko.lookAt2D(this.targetWorldPos);
             if (dist <= remaining) {
                 // reach target this frame
@@ -145,10 +145,10 @@ export class Game extends Component {
 
     private commitPendingTargetIfAny() {
         if (!this.pendingTarget) return;
-    
+
         this.activeTarget = this.pendingTarget;
         this.pendingTarget = null;
-    
+
         this.moveGeckoOnPath(this.gecko.MovePoint, this.activeTarget);
     }
 
@@ -162,7 +162,7 @@ export class Game extends Component {
             return null;
         }
 
-        const point = { x: x, y: y};
+        const point = { x: x, y: y };
         return point;
     }
 
@@ -214,7 +214,7 @@ export class Game extends Component {
             this.activeTarget = null;
             return;
         }
-    
+
         const p = this.path[this.pathIndex];
         this.targetWorldPos = this.gridToWorld(p);
         this.gecko.updateTrail(this.path[this.pathIndex]);

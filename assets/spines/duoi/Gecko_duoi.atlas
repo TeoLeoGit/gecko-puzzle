@@ -1,0 +1,13 @@
+
+Gecko_duoi.png
+size: 67, 88
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+duoi
+  rotate: false
+  xy: 2, 2
+  size: 63, 84
+  orig: 63, 84
+  offset: 0, 0
+  index: -1

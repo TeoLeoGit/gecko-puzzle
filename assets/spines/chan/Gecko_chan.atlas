@@ -1,0 +1,27 @@
+
+Gecko_chan.png
+size: 103, 31
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+chanA
+  rotate: true
+  xy: 79, 5
+  size: 24, 22
+  orig: 24, 22
+  offset: 0, 0
+  index: -1
+chanB
+  rotate: true
+  xy: 36, 6
+  size: 23, 41
+  orig: 23, 41
+  offset: 0, 0
+  index: -1
+chanC
+  rotate: false
+  xy: 2, 2
+  size: 32, 27
+  orig: 32, 27
+  offset: 0, 0
+  index: -1
