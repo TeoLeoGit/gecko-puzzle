@@ -79,12 +79,15 @@ export class Gecko extends Component {
                 this.legSegments.push(segment);
                 const legComp = leg.getComponent(sp.Skeleton)
                 this.legSkeletons.push(legComp);
-                leg.parent = this.legsNode;
-                leg.position = segment.position;
+                // leg.parent = this.legsNode;
+                // leg.position = segment.position;
                 legComp.paused = true;
             }
         });
         this.initSegmentTargets();
+        this.segments.forEach((child, i) => {
+            child.setSiblingIndex(this.segments.length - 1 - i);
+        });
     }
 
     initSegmentTargets() {
@@ -256,8 +259,8 @@ export class Gecko extends Component {
     animateLegs() {
         for (let i = 0; i < this.legSkeletons.length; i++) {
             this.legSkeletons[i].paused = !this.isMoving;
-            this.legSkeletons[i].node.position = this.legSegments[i].position;
-            this.legSkeletons[i].node.angle = this.legSegments[i].angle;
+            // this.legSkeletons[i].node.position = this.legSegments[i].position;
+            // this.legSkeletons[i].node.angle = this.legSegments[i].angle;
         }
     }
 
@@ -472,7 +475,7 @@ export class Gecko extends Component {
     }
 
     determineMovementDirection(targetPoint: Point) {
-        if (this.isMoving) return;
+        if (this.segmentTargets.length > this.segments.length) return;
         const distFromHead = Utils.manhattan(targetPoint, this.headPoint);
         const distFromTail = Utils.manhattan(targetPoint, this.tailPoint);
 
